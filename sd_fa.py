@@ -1,12 +1,27 @@
 #!/usr/bin/env  Python
 #-*- coding=utf-8 -*-
+'''
+Description : statistic indicator area ranks by factor analysis
+require     : windows Anaconda-2.3.0
+author      : shizhongxian@126.com
+usage  $python sd_fa.py  -f table.txt -c 2 
+'''
 
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn import preprocessing
 from scipy import linalg
-from sdtool import  sdtool
+from optparse import OptionParser
+import sys
+import logging
+import os
+
+logging.basicConfig(level=logging.DEBUG,
+                format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                datefmt='%a, %d %b %Y %H:%M:%S',
+                filename="C:\\LOG\\factor_analysis.log",
+                filemode='a')
 
 #global area_list
 
@@ -27,8 +42,8 @@ def get_factor_weight(data,n_components):
 
 def data_set(fname):
     '''
-    把数据转化为二维表格,每行表示一个时间段,每列表示一个指标
-    删除包含空值的行
+        把数据转化为二维表格,每行表示一个时间段,每列表示一个指标
+        删除包含空值的行
     '''
     df = pd.read_csv(fname,"\t")
     #data = df.rename(columns={'月份顺序排序':'m_order','正式指标':'indicator','正式数值':'value'})
@@ -37,9 +52,13 @@ def data_set(fname):
     #删除空值行
     cleaned_data = pivoted.dropna(axis=0)
     area_list = pivoted.index
+    indicators = pivoted.columns
+    indi_list = indicators.tolist()
+    logging.info("selected area:"+" ".join(area_list))
+    logging.info("selected indi:"+" ".join(indi_list))
     return cleaned_data,area_list
 
-def sd_fa(fname,components=2):
+def sd_fa(fname,components,result_name):
     '''
     pca 计算
     '''
@@ -48,10 +67,13 @@ def sd_fa(fname,components=2):
     fa = FactorAnalysis(n_components=components)
     #数据标准化
     values = preprocessing.scale(values)
-    fa.fit(values)
-    
-    print(fa.n_components)
-    print(fa.components_)
+    try:
+        fa.fit(values)
+    except Exception,e:
+            logging.error("factor analysis fit error")
+            sys.exit()
+    #print(fa.n_components)
+    #print(fa.components_)
     contri_ration = get_factor_weight(values, components)
     scores = np.dot(fa.transform(values),contri_ration.T)
     #print scores
@@ -61,9 +83,10 @@ def sd_fa(fname,components=2):
     result_idx = ["因子"+str(i+1) for i in range(components)]
     result_data = pd.DataFrame(fa.components_,columns=result_col,index=result_idx)
     #result_data = result_data.astype(float)
-    result_data.to_csv("fa_result.txt",sep="\t",float_format='%8.4f')
+    #result_data.to_csv("fa_result.txt",sep="\t",float_format='%8.4f')
+    result_data.to_csv(result_name,sep="\t",float_format='%8.4f')
     #
-    fout = open("fa_result.txt","a")
+    fout = open(result_name,"a")
     fout.write("\n===============================\n")
     if len(area_list) == len(scores):
         area_scores = zip(scores_list,area_list)
@@ -76,15 +99,40 @@ def sd_fa(fname,components=2):
             fout.write("%s,%.5f \n" % (as_dict[score],score))
     else:
         print "caculated result not equal to area_list"
+        logging.error("caculated result not equal to area_list")
+        sys.exit()
     fout.close()
-    print "save to pca_result.txt"
-    
+    print "save to",result_name
+    logging.info("save to"+result_name)
     
 if __name__ == "__main__":
-    #sd_pca("pca_rec_2014_table.txt")
-    table_file_name = "table.txt"
-    sdtool.rec2table("season_2014_season_1_2_rec.txt", table_file_name)
-    sd_fa(table_file_name)
+    optparser = OptionParser()
+    optparser.add_option('-f', '--inputFile',
+                         dest='input',
+                         help='filename containing csv convert from rec',
+                         default=None)
+    optparser.add_option('-c', '--components',
+                         dest='components',
+                         help='factor analysis factors',
+                         default=2,
+                         type='int')
+    
+    (options, args) = optparser.parse_args()
+    
+    inFile = None
+    if options.input is None:
+            inFile = sys.stdin
+            #inFile = "INTEGRATED-DATASET.csv"
+    elif options.input is not None:
+            inFile = options.input
+    else:
+            print 'No dataset filename specified, system with exit\n'
+            sys.exit('System will exit')
+    components = options.components
+    full_name = os.path.realpath(inFile)
+    pos = full_name.find(".txt")
+    result_name = full_name[:pos] + "_result.txt"
+    sd_fa(inFile,components,result_name)
     
     
     
