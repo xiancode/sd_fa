@@ -49,14 +49,24 @@ def data_set(fname):
     #data = df.rename(columns={'月份顺序排序':'m_order','正式指标':'indicator','正式数值':'value'})
     data = df.rename(columns={'地区':'area','正式指标':'indicator','正式数值':'value'})
     pivoted = data.pivot('area','indicator','value')
-    #删除空值行
+    #删除空值行,生成清洗后的数据
     cleaned_data = pivoted.dropna(axis=0)
-    area_list = pivoted.index
+    #原始地区列表
+    areas = pivoted.index
+    area_list = areas.tolist()
+    #原始指标列表
     indicators = pivoted.columns
     indi_list = indicators.tolist()
+    #清洗后的的确列表
+    cleaned_areas = cleaned_data.index
+    cleaned_area_list = cleaned_areas.tolist()
     logging.info("selected area:"+" ".join(area_list))
+    logging.info("cleaned  area:"+" ".join(cleaned_area_list))
+    deleted_areas = set(area_list) - set(cleaned_area_list)
+    if len(deleted_areas) >= 1:
+        logging.info("deleted areas:"+" ".join(deleted_areas))
     logging.info("selected indi:"+" ".join(indi_list))
-    return cleaned_data,area_list
+    return cleaned_data,cleaned_area_list
 
 def sd_fa(fname,components,result_name):
     '''
@@ -129,6 +139,9 @@ if __name__ == "__main__":
             print 'No dataset filename specified, system with exit\n'
             sys.exit('System will exit')
     components = options.components
+    #
+    inFile = "table.txt"
+    components = 2
     full_name = os.path.realpath(inFile)
     pos = full_name.find(".txt")
     result_name = full_name[:pos] + "_result.txt"
