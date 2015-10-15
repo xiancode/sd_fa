@@ -85,12 +85,20 @@ def sd_fa(fname,components,result_name):
     #print(fa.n_components)
     #print(fa.components_)
     contri_ration = get_factor_weight(values, components)
+    
     scores = np.dot(fa.transform(values),contri_ration.T)
     #print scores
     scores_list = scores.tolist()
     result_col =  cl_data.columns
     result_col.name = "指标"
     result_idx = ["因子"+str(i+1) for i in range(components)]
+    #输出因子权重
+    #con_tri_str_list = map(str, contri_ration)
+    #idx_contri = zip(result_idx,con_tri_str_list)
+    #print idx_contri
+    #for tmp in idx_contri:
+    #    print "\t".join(tmp)
+    
     result_data = pd.DataFrame(fa.components_,columns=result_col,index=result_idx)
     #result_data = result_data.astype(float)
     #result_data.to_csv("fa_result.txt",sep="\t",float_format='%8.4f')
@@ -98,6 +106,10 @@ def sd_fa(fname,components,result_name):
     #
     fout = open(result_name,"a")
     fout.write("\n===============================\n")
+    for i in range(len(result_idx)):
+        fout.write("%s,\t %.3f \n" %(result_idx[i],contri_ration[i]))
+    fout.write("\n===============================\n")
+    
     if len(area_list) == len(scores):
         area_scores = zip(scores_list,area_list)
         as_dict = dict((key,value) for key,value in area_scores)
@@ -140,8 +152,8 @@ if __name__ == "__main__":
             sys.exit('System will exit')
     components = options.components
     #
-    inFile = "table.txt"
-    components = 2
+    #inFile = "table.txt"
+    #components = 2
     full_name = os.path.realpath(inFile)
     pos = full_name.find(".txt")
     result_name = full_name[:pos] + "_result.txt"
